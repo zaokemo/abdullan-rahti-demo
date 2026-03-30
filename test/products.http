@@ -1,0 +1,10 @@
+# Kräver VSCode tillägget Rest-Client (humao.rest-client)
+@apiUrl = https://fw-teaching.fi/demo/wdbocms/api/v1/products
+
+### Get all products
+GET {{apiUrl}}
+
+### Get one product
+GET {{apiUrl}}/1002
+
+### Create new product
