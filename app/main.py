@@ -1,10 +1,13 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from datetime import date
+from app.db import get_conn, create_schema
 
 app = FastAPI()
 
-origins = ["*"]
+origins = ["*"] # Change to the real front end origin in production
 
 app.add_middleware(
     CORSMiddleware,
@@ -14,22 +17,82 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+create_schema()
+
+# datamodell för bokning
+class Booking(BaseModel):
+    guest_id: int
+    room_id: int
+    datefrom: date 
+    dateto: date
+
+# Main route for this API
 @app.get("/")
-def read_root():
-    return { "msg": "Moro local docker!" }
+def read_root(): 
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT version() ")
+        result = cur.fetchone()
 
-@app.get("/hello")
-def hello():
-    return { "msg": "what`s up" }
+    return { "msg": f"Hotel API!", "db_status": result }
 
-@app.get("/api/ip")
-def ip(request: Request):
-    return { "ip": request.client.host }
+@app.get("/if/{term}")
+def if_test(term: str):
+    ret_str = "Default message..."
+    if (term == "hello" 
+        or term == "hi" 
+        or term == "greetings"):
+        
+        ret_str = "Hello yourself!"
+    elif (term == "morjens" or term == "hej") and 1 == 0:
+        ret_str = "Hej på dig"
+    else:
+        ret_str = f"vad betyder {term}?"
 
-@app.get("/ip", response_class=HTMLResponse)
-def ip(request: Request):
-    return f"<h1>Din ip är {request.client.host}</h1>"
+    return { "msg": ret_str }
+        
+    
+# List all rooms 
+@app.get("/rooms")
+def get_rooms(): 
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("""
+            SELECT * 
+            FROM rooms
+            ORDER BY room_number
+        """)
+        rooms = cur.fetchall()
+    return rooms
 
-@app.get("/items/{id}")
-def read_item(item_id: int, q: str = None):
-    return {"id": id, "q": q}
+# Get one room
+@app.get("/rooms/{id}")
+def get_room(id: int):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("""
+            SELECT * 
+            FROM rooms 
+            WHERE id = %s
+        """, [id]) # list här, tuple används också
+        room = cur.fetchone()
+    return room      
+
+# Create booking
+@app.post("/bookings")
+def create_booking(booking: Booking):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO bookings (
+                guest_id,
+                room_id,
+                datefrom,
+                dateto
+            ) VALUES (
+                %s, %s, %s, %s
+            ) RETURNING id
+        """, (
+            booking.guest_id, 
+            booking.room_id,
+            booking.datefrom,
+            booking.dateto
+        ))
+        new_booking = cur.fetchone()
+    return { "msg": "Booking created!", "id": new_booking['id']}

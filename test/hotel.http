@@ -1,0 +1,45 @@
+
+# Kräver VSCode tillägget Rest-Client (humao.rest-client)
+@apiUrl = https://fw-teaching.fi/demo/wdbocms/api/v1/products
+
+
+### Get all products
+GET {{apiUrl}}
+
+### Create new product
+POST {{apiUrl}}
+Content-Type: application/json
+
+{
+  "room_number": 101,
+  "type": "single",
+  "price": 100
+}
+
+### Create new product
+POST {{apiUrl}}
+Content-Type: application/json
+
+{
+  "room_number": 102,
+  "type": "double",
+  "price": 150
+@apiUrl = http://127.0.0.1:8080
+
+### Get all rooms
+GET {{apiUrl}}/rooms
+
+
+### Get bookings
+GET {{apiUrl}}/bookings
+
+### Create booking
+POST {{apiUrl}}/bookings
+Content-Type: application/json
+
+{
+    "room_id": 2,
+    "guest_id": 1,
+    "datefrom": "2026-05-01",
+    "dateto": "2026-05-03"
+}
