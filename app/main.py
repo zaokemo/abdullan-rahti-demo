@@ -75,6 +75,19 @@ def get_room(id: int):
         room = cur.fetchone()
     return room      
 
+
+# List all bookings 
+@app.get("/bookings")
+def get_bookings(): 
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("""
+            SELECT * 
+            FROM bookings
+            ORDER BY id
+        """)
+        bookings = cur.fetchall()
+    return bookings
+
 # Create booking
 @app.post("/bookings")
 def create_booking(booking: Booking):

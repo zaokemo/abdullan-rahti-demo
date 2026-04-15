@@ -40,13 +40,13 @@ def create_schema():
                 guest_id INT REFERENCES guests(id), -- foreign key (främmande nyckel)
                 room_id INT REFERENCES rooms(id),
                 datefrom DATE DEFAULT now(),
-                dateto DATE DEFAULT now(),
+                dateto DATE,
                 info VARCHAR
             );
             -- man kan sätta default också senare:
-            -- ALTER COLUMN datefrom SET DEFAULT now();
+            -- ALTER TABLE bookings ALTER COLUMN datefrom SET DEFAULT now();
             -- lägg till främmande nyckel senare:
-            -- ADD CONSTRAINT guest_id_key FOREIGN KEY (guest_id) REFERENCES guests(id);
+            -- ALTER TABLE bookings ADD CONSTRAINT guest_id_key FOREIGN KEY (guest_id) REFERENCES guests(id);
 
 
         """)
