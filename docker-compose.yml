@@ -1,9 +1,23 @@
-version: '3.8'
-
+# Local dev environment with postgresql
 services:
+  postgres:
+    image: postgres:17
+    container_name: postgres-fastapi-sv
+    environment:
+      POSTGRES_DB: devdb
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpassword
+      #DATABASE_URL=postgresql://devuser:devpassword@postgres:5432/devdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_sv:/var/lib/postgresql/data
+
   fastapi-app:
     build:
       context: .
+    depends_on:
+      - postgres
     volumes:
       # Mount the local app directory to the /code/app directory in the container    
       - ./app:/code/app
@@ -12,3 +26,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - MODE
+      - DATABASE_URL
+
+volumes:
+  postgres_data_sv:
