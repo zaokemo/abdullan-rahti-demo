@@ -35,7 +35,7 @@ def create_schema():
                 created_at TIMESTAMP DEFAULT now(),
                 address VARCHAR
             );
-            ALTER TABLE guests ADD COLUMN api_key VARCHAR DEFAULT encode(gen_random_bytes(32), 'hex');
+            ALTER TABLE guests ADD COLUMN IF NOT EXISTS api_key VARCHAR DEFAULT encode(gen_random_bytes(32), 'hex');
                     
             -----------
             -- bookings

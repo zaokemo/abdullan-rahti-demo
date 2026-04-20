@@ -1,10 +1,12 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from datetime import date
 from app.db import get_conn, create_schema
 
+# OBS: Lektion 8, API kräver nu API-nyckel
 app = FastAPI()
 
 origins = ["*"] # Change to the real front end origin in production
@@ -18,6 +20,22 @@ app.add_middleware(
 )
 
 create_schema()
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+def validate_api_key(api_key: str = Depends(api_key_header)):
+    if not api_key:
+        raise HTTPException(status_code=401, detail={"error": "API key missing"})
+    
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("""
+            SELECT * FROM guests WHERE api_key = %s
+        """, [api_key])
+        guest = cur.fetchone()
+        if not guest:
+            raise HTTPException(status_code=401, detail={"error": "Bad API Key"})
+        return guest
+        
 
 # datamodell för bokning
 class Booking(BaseModel):
@@ -35,9 +53,10 @@ def read_root():
 
     return { "msg": f"Hotel API!", "db_status": result }
 
+
 # List all guests 
 @app.get("/guests")
-def get_rooms(): 
+def get_guests(guest: dict = Depends(validate_api_key)): 
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("""
             SELECT g.*,
@@ -46,8 +65,9 @@ def get_rooms():
                     WHERE guest_id = g.id
                         AND dateto < now()) AS prev_visits
             FROM guests g
+            WHERE id = %s
             ORDER BY g.lastname
-        """)
+        """, [guest['id']])
         guests = cur.fetchall()
     return guests
         
@@ -79,7 +99,8 @@ def get_room(id: int):
 
 # List all bookings 
 @app.get("/bookings")
-def get_bookings(): 
+def get_bookings(guest: dict = Depends(validate_api_key)): 
+    print(guest)
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("""
             SELECT 
@@ -99,8 +120,9 @@ def get_bookings():
                 ON r.id = b.room_id
             INNER JOIN guests g
                 ON g.id = b.guest_id
+            WHERE b.guest_id = %s
             ORDER BY id
-        """)
+        """, [guest['id']] )
         bookings = cur.fetchall()
     return bookings
 
