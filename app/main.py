@@ -35,20 +35,17 @@ def read_root():
 
     return { "msg": f"Hotel API!", "db_status": result }
 
-@app.get("/if/{term}")
-def if_test(term: str):
-    ret_str = "Default message..."
-    if (term == "hello" 
-        or term == "hi" 
-        or term == "greetings"):
-        
-        ret_str = "Hello yourself!"
-    elif (term == "morjens" or term == "hej") and 1 == 0:
-        ret_str = "Hej på dig"
-    else:
-        ret_str = f"vad betyder {term}?"
-
-    return { "msg": ret_str }
+# List all guests 
+@app.get("/guests")
+def get_rooms(): 
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("""
+            SELECT * 
+            FROM guests
+            ORDER BY lastname
+        """)
+        guests = cur.fetchall()
+    return guests
         
     
 # List all rooms 
@@ -81,8 +78,23 @@ def get_room(id: int):
 def get_bookings(): 
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("""
-            SELECT * 
-            FROM bookings
+            SELECT 
+                r.room_number,
+                g.firstname || ' ' || g.lastname AS guest_name,
+                (b.dateto - b.datefrom) AS nights,
+                r.price as price_per_night,
+                CASE 
+                    WHEN (b.dateto - b.datefrom) >= 7 THEN 
+                        -- 20 percent discount
+                        (b.dateto - b.datefrom) * r.price * 0.8
+                    ELSE (b.dateto - b.datefrom) * r.price
+                END as total_price,
+                b.*
+            FROM bookings b
+            INNER JOIN rooms r
+                ON r.id = b.room_id
+            INNER JOIN guests g
+                ON g.id = b.guest_id
             ORDER BY id
         """)
         bookings = cur.fetchall()
@@ -109,3 +121,6 @@ def create_booking(booking: Booking):
         ))
         new_booking = cur.fetchone()
     return { "msg": "Booking created!", "id": new_booking['id']}
+
+
+
