@@ -40,9 +40,13 @@ def read_root():
 def get_rooms(): 
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("""
-            SELECT * 
-            FROM guests
-            ORDER BY lastname
+            SELECT g.*,
+                (SELECT count(*) 
+                    FROM bookings
+                    WHERE guest_id = g.id
+                        AND dateto < now()) AS prev_visits
+            FROM guests g
+            ORDER BY g.lastname
         """)
         guests = cur.fetchall()
     return guests

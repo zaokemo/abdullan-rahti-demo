@@ -9,6 +9,10 @@ def create_schema():
     with get_conn() as conn, conn.cursor() as cur:
         # Create the schema
         cur.execute("""
+                    
+            -- Lägg till pgcrypto 
+            CREATE EXTENSION IF NOT EXISTS pgcrypto;
+                    
             -----------
             -- rooms
             -----------
@@ -31,6 +35,7 @@ def create_schema():
                 created_at TIMESTAMP DEFAULT now(),
                 address VARCHAR
             );
+            ALTER TABLE guests ADD COLUMN api_key VARCHAR DEFAULT encode(gen_random_bytes(32), 'hex');
                     
             -----------
             -- bookings
@@ -47,6 +52,7 @@ def create_schema():
             -- ALTER TABLE bookings ALTER COLUMN datefrom SET DEFAULT now();
             -- lägg till främmande nyckel senare:
             -- ALTER TABLE bookings ADD CONSTRAINT guest_id_key FOREIGN KEY (guest_id) REFERENCES guests(id);
+
 
 
         """)
