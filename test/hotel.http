@@ -1,34 +1,13 @@
-
-# Kräver VSCode tillägget Rest-Client (humao.rest-client)
-@apiUrl = https://fw-teaching.fi/demo/wdbocms/api/v1/products
-
-
-### Get all products
-GET {{apiUrl}}
-
-### Create new product
-POST {{apiUrl}}
-Content-Type: application/json
-
-{
-  "room_number": 101,
-  "type": "single",
-  "price": 100
-}
-
-### Create new product
-POST {{apiUrl}}
-Content-Type: application/json
-
-{
-  "room_number": 102,
-  "type": "double",
-  "price": 150
 @apiUrl = http://127.0.0.1:8080
+
+# Rest-Client kan läsa variabler ur .env
+@api_key = {{$dotenv API_KEY}}
 
 ### Get all rooms
 GET {{apiUrl}}/rooms
 
+### Get all guests
+GET {{apiUrl}}/guests
 
 ### Get bookings
 GET {{apiUrl}}/bookings
@@ -36,10 +15,20 @@ GET {{apiUrl}}/bookings
 ### Create booking
 POST {{apiUrl}}/bookings
 Content-Type: application/json
+X-API-Key: {{api_key}}
 
 {
     "room_id": 2,
-    "guest_id": 1,
-    "datefrom": "2026-05-01",
-    "dateto": "2026-05-03"
+    "datefrom": "2026-06-01",
+    "dateto": "2026-05-03",
+    "info": "info..."
+}
+
+### Uppdatera bokning
+PUT {{apiUrl}}/bookings/2
+Content-Type: application/json
+X-API-Key: {{api_key}}
+
+{
+    "stars": 4
 }

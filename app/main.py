@@ -2,9 +2,10 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
-from pydantic import BaseModel
+from pydantic import BaseModel, conint
 from datetime import date
 from app.db import get_conn, create_schema
+from markupsafe import escape
 
 # OBS: Lektion 8, API kräver nu API-nyckel
 app = FastAPI()
@@ -37,12 +38,17 @@ def validate_api_key(api_key: str = Depends(api_key_header)):
         return guest
         
 
-# datamodell för bokning
+# datamodell för ny bokning
 class Booking(BaseModel):
-    guest_id: int
+    #guest_id: int # kommer via api-ley i stället
     room_id: int
     datefrom: date 
     dateto: date
+    info: str
+
+# datamodell för uppdatera bokning
+class BookingUpdate(BaseModel):
+    stars: conint(ge=1, le=5) # tar emot int 1-5
 
 # Main route for this API
 @app.get("/")
@@ -56,18 +62,12 @@ def read_root():
 
 # List all guests 
 @app.get("/guests")
-def get_guests(guest: dict = Depends(validate_api_key)): 
+def get_guests(): 
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("""
-            SELECT g.*,
-                (SELECT count(*) 
-                    FROM bookings
-                    WHERE guest_id = g.id
-                        AND dateto < now()) AS prev_visits
-            FROM guests g
-            WHERE id = %s
-            ORDER BY g.lastname
-        """, [guest['id']])
+            SELECT * FROM guests_view
+            ORDER BY lastname
+        """)
         guests = cur.fetchall()
     return guests
         
@@ -103,50 +103,53 @@ def get_bookings(guest: dict = Depends(validate_api_key)):
     print(guest)
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("""
-            SELECT 
-                r.room_number,
-                g.firstname || ' ' || g.lastname AS guest_name,
-                (b.dateto - b.datefrom) AS nights,
-                r.price as price_per_night,
-                CASE 
-                    WHEN (b.dateto - b.datefrom) >= 7 THEN 
-                        -- 20 percent discount
-                        (b.dateto - b.datefrom) * r.price * 0.8
-                    ELSE (b.dateto - b.datefrom) * r.price
-                END as total_price,
-                b.*
-            FROM bookings b
-            INNER JOIN rooms r
-                ON r.id = b.room_id
-            INNER JOIN guests g
-                ON g.id = b.guest_id
-            WHERE b.guest_id = %s
-            ORDER BY id
+            SELECT * FROM bookings_view
+            WHERE guest_id = %s
+            ORDER BY id DESC
         """, [guest['id']] )
         bookings = cur.fetchall()
+        
     return bookings
 
 # Create booking
 @app.post("/bookings")
-def create_booking(booking: Booking):
+def create_booking(booking: Booking, guest: dict = Depends(validate_api_key)):
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("""
             INSERT INTO bookings (
                 guest_id,
                 room_id,
                 datefrom,
-                dateto
+                dateto,
+                info
             ) VALUES (
-                %s, %s, %s, %s
+                %s, %s, %s, %s, %s
             ) RETURNING id
         """, (
-            booking.guest_id, 
+            guest['id'], 
             booking.room_id,
             booking.datefrom,
-            booking.dateto
+            booking.dateto,
+            escape(booking.info)
         ))
         new_booking = cur.fetchone()
     return { "msg": "Booking created!", "id": new_booking['id']}
 
+# Update booking
+@app.put("/bookings/{id}")
+def update_booking(id: int, booking: BookingUpdate, 
+    guest: dict = Depends(validate_api_key)):
 
-
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("""
+            UPDATE bookings SET
+                stars = %s
+            WHERE id = %s
+                AND guest_id = %s
+            RETURNING *
+        """, [booking.stars, id, guest['id']])
+        updated_booking = cur.fetchone()
+        if updated_booking:
+            return { "msg": "booking updated!", "id": updated_booking['id']}
+        else:
+            raise HTTPException(status_code=404, detail={"error": "Booking not found"})
